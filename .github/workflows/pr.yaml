@@ -8,7 +8,7 @@ permissions: {}
 jobs:
   pr-checks:
     name: Run PR checks
-    uses: algorandfoundation/algokit-shared-config/.github/workflows/node-ci.yml@chore/node-npm
+    uses: algorandfoundation/algokit-shared-config/.github/workflows/node-ci.yml@main
     permissions:
       contents: read
       packages: read

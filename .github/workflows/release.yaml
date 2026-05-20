@@ -33,7 +33,6 @@ jobs:
     name: CI
     uses: algorandfoundation/algokit-shared-config/.github/workflows/node-ci.yml@main
     with:
-      node-version: 20.x
       audit-script: npm run audit
       compile-script: npm run check-types
       test-script: npm run test
@@ -63,7 +62,7 @@ jobs:
       - name: Setup node
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://npm.pkg.github.com'
           scope: '@algorandfoundation'
           cache: 'npm'
@@ -82,7 +81,7 @@ jobs:
         with:
           # Use bot token for semantic-release operations
           github-token: ${{ steps.app_token.outputs.token }}
-          node-version: 22
+          node-version: 24
 
       - name: Create .env file with production values
         if: env.IS_PRODUCTION_RELEASE == 'true'

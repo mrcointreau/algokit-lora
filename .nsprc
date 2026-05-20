@@ -1,38 +1,8 @@
 {
-  "1112496": {
-    "active": true,
-    "expiry": "2026-07-13",
-    "notes": "High in undici@6.23.0 via @actions/core > @actions/http-client (semantic-release dep). No fix in v5 line, fix requires major version bump."
-  },
-  "1114594": {
-    "active": true,
-    "expiry": "2026-07-13",
-    "notes": "Moderate in undici@6.23.0 via @actions/core (semantic-release dep). HTTP Request/Response Smuggling. Bundled in @actions/core, no fix available without major bump."
-  },
-  "1114638": {
-    "active": true,
-    "expiry": "2026-07-13",
-    "notes": "High in undici@6.23.0 via @actions/core (semantic-release dep). WebSocket memory consumption. Bundled in @actions/core, no fix available without major bump."
-  },
-  "1114640": {
-    "active": true,
-    "expiry": "2026-07-13",
-    "notes": "High in undici@6.23.0 via @actions/core (semantic-release dep). WebSocket exception. Bundled in @actions/core, no fix available without major bump."
-  },
-  "1114642": {
-    "active": true,
-    "expiry": "2026-07-13",
-    "notes": "Moderate in undici@6.23.0 via @actions/core (semantic-release dep). CRLF Injection via upgrade option. Bundled in @actions/core, no fix available without major bump."
-  },
-  "1113442": {
-    "active": true,
-    "expiry": "2026-07-13",
-    "notes": "Moderate in bn.js@4.12.2 via @walletconnect/utils > @blockshake/defly-connect (production dep). Infinite loop. No fix available for v4 line."
-  },
   "1112030": {
     "active": true,
     "expiry": "2026-07-13",
-    "notes": "Low in elliptic@6.6.1 via vite-plugin-node-polyfills > node-stdlib-browser > crypto-browserify (dev dep). Risky crypto implementation. All versions affected, no fix available."
+    "notes": "Low in elliptic@6.6.1 via vite-plugin-node-polyfills > node-stdlib-browser > crypto-browserify (dev dep). Risky crypto implementation. All versions affected, no fix available. crypto-browserify is not imported by app code; only bundled if a dep references it."
   },
   "1119088": {
     "active": true,

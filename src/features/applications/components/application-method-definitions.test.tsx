@@ -294,7 +294,7 @@ describe('application-method-definitions', () => {
               await user.click(await component.findByRole('button', { name: sendButtonLabel }))
 
               const errorMessage = await component.findByText(
-                'Network request error. Received status 400 (Bad Request): txgroup had 0 in fees, which is less than the minimum 1 * 1000'
+                'Error resolving execution info via simulate in transaction 0: txgroup with 0.0A fees is less than 1mA (usage=1.000000 * base=1mA)'
               )
               expect(errorMessage).toBeInTheDocument()
             }

@@ -18,30 +18,41 @@ on:
         description: 'Release version'
         required: true
         type: string
-    secrets:
-      NETLIFY_SITE_ID:
+      environment:
+        description: 'GitHub Environment'
         required: true
-      NETLIFY_AUTH_TOKEN:
+        type: string
+      branch:
+        description: 'Cloudflare Pages target branch (e.g., release, main)'
+        required: true
+        type: string
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
         required: true
 
-concurrency: deploy-to-production
+concurrency: deploy-to-${{ inputs.environment }}
 
 jobs:
-  deploy-to-production:
-    name: Deploy Website to Production
+  deploy-to-cloudflare:
+    name: Deploy Website to ${{ inputs.environment }}
     runs-on: ubuntu-latest
-    environment: Production
+    environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download app build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-build
           path: artifacts/website
 
-      - name: Deploy website to Netlify
-        run: |
-          npx netlify-cli@23.7.3 deploy --site ${{ secrets.NETLIFY_SITE_ID }} --auth ${{ secrets.NETLIFY_AUTH_TOKEN }} --dir artifacts/website --prod --no-build
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy artifacts/website --project-name=algokit-lora --branch=${{ inputs.branch }}

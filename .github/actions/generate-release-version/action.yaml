@@ -7,7 +7,7 @@ inputs:
   node-version:
     description: 'The Node version'
     required: true
-    default: '20'
+    default: '24'
 outputs:
   release-published:
     description: 'If the release was published'
@@ -26,7 +26,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup node
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: ${{ inputs.node-version }}
         registry-url: 'https://npm.pkg.github.com'
@@ -56,7 +56,6 @@ runs:
         echo "=== Debugging semantic-release dry-run outputs ==="
         echo "new-release-published: '${{ steps.get-next-version.outputs.new-release-published }}'"
         echo "new-release-version: '${{ steps.get-next-version.outputs.new-release-version }}'"
-        echo "new-release-git-tag: '${{ steps.get-next-version.outputs.new-release-git-tag }}'"
         echo "=== All step outputs ==="
         echo '${{ toJSON(steps.get-next-version.outputs) }}'
         echo "=== Done debugging ==="
@@ -75,13 +74,13 @@ runs:
 
     - name: Get release ID
       id: get-release-id
-      uses: actions/github-script@v7
+      uses: actions/github-script@v9
       if: steps.get-next-version.outputs.new-release-published == 'true'
       with:
         script: |
           const { data } = await github.rest.repos.getReleaseByTag({
             owner: context.repo.owner,
             repo: context.repo.repo,
-            tag: "${{ steps.get-next-version.outputs.new-release-git-tag }}"
+            tag: "v${{ steps.get-next-version.outputs.new-release-version }}"
           })
           return data.id

@@ -8,12 +8,7 @@ import { Button } from '@/features/common/components/button'
 import { DialogBodyProps, useDialogForm } from '@/features/common/hooks/use-dialog-form'
 import { StructDefinition } from '@/features/applications/components/struct-definition'
 import { DefaultArgument } from '@/features/applications/components/default-argument'
-import {
-  BuildableTransactionType,
-  BuildAppCallTransactionResult,
-  BuildMethodCallTransactionResult,
-  BuildTransactionResult,
-} from '@/features/transaction-wizard/models'
+import { BuildableTransactionType, BuildMethodCallTransactionResult, BuildTransactionResult } from '@/features/transaction-wizard/models'
 import { TransactionBuilder } from '@/features/transaction-wizard/components/transaction-builder'
 import { TransactionBuilderMode } from '@/features/transaction-wizard/data'
 import { SimulateResult, TransactionsBuilder } from '@/features/transaction-wizard/components/transactions-builder'
@@ -75,10 +70,7 @@ function Method({ method, applicationId, readonly }: MethodProps) {
       transaction: {
         applicationId: applicationId,
         methodDefinition: method,
-        onComplete:
-          method.callConfig && method.callConfig.call.length > 0
-            ? (method.callConfig.call[0] as algosdk.OnApplicationComplete as BuildAppCallTransactionResult['onComplete'])
-            : undefined,
+        onComplete: method.callConfig && method.callConfig.call.length > 0 ? method.callConfig.call[0] : undefined,
       },
     })
     if (transaction && transaction.type === BuildableTransactionType.MethodCall) {
@@ -204,7 +196,7 @@ function Argument({ index, argument }: ArgumentProps) {
 
   return (
     <div>
-      <h5 className="mb-1.5 text-primary">{`Argument ${index + 1}`}</h5>
+      <h5 className="text-primary mb-1.5">{`Argument ${index + 1}`}</h5>
       <DescriptionList items={items} dtClassName="w-24 truncate" />
     </div>
   )

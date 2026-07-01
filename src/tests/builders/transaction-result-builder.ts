@@ -1,4 +1,4 @@
-import { DataBuilder, dossierProxy, randomElement, randomString, randomDateBetween } from '@makerx/ts-dossier'
+import { DataBuilder, dossierProxy, randomElement, randomString, randomDateBetween } from '@/tests/utils/dossier'
 import algosdk, { base64ToBytes } from 'algosdk'
 import { TransactionResult } from '@/features/transactions/data/types'
 import { randomBigInt, randomBigIntBetween } from '@/tests/utils/random-bigint'

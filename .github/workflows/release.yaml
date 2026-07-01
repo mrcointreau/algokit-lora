@@ -1,15 +1,13 @@
 # Manual Release Workflow (Orchestrator)
 #
-# This workflow orchestrates both web and desktop releases when triggered.
-# It runs semantic-release once and then calls both release workflows.
+# This workflow orchestrates web releases when triggered.
+# It runs semantic-release once and then calls the release workflow.
 #
 # Role in release workflow:
 # - Triggered by push to release branch or manual dispatch
 # - Creates GitHub releases with semantic versioning once
 # - Calls release-web.yaml for web deployment on ref==release
 # - Syncs release version to main branch if ref==release
-# - Calls release-desktop.yaml for desktop app builds on ref==release
-# - Coordinates both releases to use same version
 
 name: Release
 
@@ -33,17 +31,12 @@ concurrency: orchestrate-release
 jobs:
   ci:
     name: CI
-    uses: makerxstudio/shared-config/.github/workflows/node-ci.yml@main
+    uses: algorandfoundation/algokit-shared-config/.github/workflows/node-ci.yml@main
     with:
-      working-directory: .
-      node-version: 20.x
       audit-script: npm run audit
       compile-script: npm run check-types
       test-script: npm run test
-      pre-test-script: |
-        pipx install algokit
-        algokit localnet start
-        npx --yes wait-on tcp:4001 -t 30000
+      install-algokit: true
 
   build-and-release:
     name: Build and Create Release
@@ -53,24 +46,23 @@ jobs:
       release-version: ${{ steps.generate-release-version.outputs.release-version }}
       release-tag: ${{ steps.generate-release-version.outputs.release-tag }}
       release-id: ${{ steps.generate-release-version.outputs.release-id }}
-      crabnebula-release-id: ${{ steps.get-crabnebula-release-id.outputs.release-id }}
     steps:
       - name: Generate bot token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         id: app_token
         with:
           app-id: ${{ secrets.BOT_ID }}
           private-key: ${{ secrets.BOT_SK }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ steps.app_token.outputs.token }}
           fetch-depth: 0
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://npm.pkg.github.com'
           scope: '@algorandfoundation'
           cache: 'npm'
@@ -83,21 +75,13 @@ jobs:
       # Let scripts run without the token
       - run: npm rebuild
 
-      - name: Validate CrabNebula API key
-        id: validate-cn-api
-        uses: crabnebula-dev/cloud-release@v0.2.0
-        with:
-          command: release list ${{ secrets.CN_ORG_NAME }}/${{ secrets.CN_APP_NAME }} --limit 1
-          api-key: ${{ secrets.CN_API_KEY }}
-        continue-on-error: false
-
       - name: Generate release version
         uses: ./.github/actions/generate-release-version
         id: generate-release-version
         with:
           # Use bot token for semantic-release operations
           github-token: ${{ steps.app_token.outputs.token }}
-          node-version: 20
+          node-version: 24
 
       - name: Create .env file with production values
         if: env.IS_PRODUCTION_RELEASE == 'true'
@@ -118,7 +102,7 @@ jobs:
         run: npm run build
 
       - name: Upload app build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-build
           path: dist/
@@ -132,9 +116,9 @@ jobs:
           echo "release-notes: ${{ steps.generate-release-version.outputs.release-notes }}"
           echo "release-channel: ${{ steps.generate-release-version.outputs.release-channel }}"
 
-          # Validate required outputs
-          if [ -z "${{ steps.generate-release-version.outputs.release-version }}" ]; then
-            echo "❌ Error: release-version is empty"
+          # Only enforce release-version is present for production releases
+          if [ "${{ env.IS_PRODUCTION_RELEASE }}" = "true" ] && [ -z "${{ steps.generate-release-version.outputs.release-version }}" ]; then
+            echo "❌ Error: release-version is empty for production release"
             exit 1
           fi
 
@@ -145,19 +129,6 @@ jobs:
 
           echo "✅ All required release outputs are present"
 
-      - name: Create draft CrabNebula release
-        uses: crabnebula-dev/cloud-release@v0.2.0
-        id: create-crabnebula-release
-        if: env.IS_PRODUCTION_RELEASE == 'true'
-        with:
-          command: release draft ${{ secrets.CN_ORG_NAME }}/${{ secrets.CN_APP_NAME }} ${{ steps.generate-release-version.outputs.release-version }} ${{ env.IS_PRODUCTION_RELEASE != 'true' && '--channel beta' || '' }}
-          api-key: ${{ secrets.CN_API_KEY }}
-
-      - name: Get CrabNebula release ID
-        id: get-crabnebula-release-id
-        if: env.IS_PRODUCTION_RELEASE == 'true'
-        run: echo "release-id=${{ fromJson(steps.create-crabnebula-release.outputs.stdout).id }}" >> $GITHUB_OUTPUT
-
   sync-release-to-main:
     name: Sync Release Version to Main
     runs-on: ubuntu-latest
@@ -165,13 +136,13 @@ jobs:
     if: github.ref_name == 'release'
     steps:
       - name: Generate bot token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v3
         id: app_token
         with:
           app-id: ${{ secrets.BOT_ID }}
           private-key: ${{ secrets.BOT_SK }}
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ steps.app_token.outputs.token }}
@@ -220,23 +191,26 @@ jobs:
 
           echo "✅ Successfully synced $VERSION to main branch"
 
-  release-web:
-    name: Release Web
+  release-web-prod:
+    name: Release Web (Production)
     needs: [build-and-release]
+    # Only runs when pushing to the 'release' branch
     if: github.ref_name == 'release'
     uses: ./.github/workflows/release-web.yaml
     with:
       version: ${{ needs.build-and-release.outputs.release-version }}
+      environment: Production
+      branch: release
     secrets: inherit
 
-  release-desktop:
-    name: Release Desktop
+  release-web-dev:
+    name: Release Web (Development)
     needs: [build-and-release]
-    if: github.ref_name == 'release'
-    uses: ./.github/workflows/release-desktop.yaml
+    # Only runs when pushing to the 'main' branch
+    if: github.ref_name == 'main'
+    uses: ./.github/workflows/release-web.yaml
     with:
-      version: ${{ needs.build-and-release.outputs.release-version }}
-      production-release: ${{ github.ref_name == 'release' }}
-      release-tag: ${{ needs.build-and-release.outputs.release-tag }}
-      crabnebula-release-id: ${{ needs.build-and-release.outputs.crabnebula-release-id }}
+      version: dev-${{ github.sha }}
+      environment: Development
+      branch: main
     secrets: inherit

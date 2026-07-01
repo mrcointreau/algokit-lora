@@ -20,8 +20,8 @@ import { asArc56AppSpec } from '@/features/applications/mappers'
 import { TealTemplateParamField, TealUnknownTypeTemplateParamFieldValue } from '../../models'
 import { asTealTemplateParamField } from '@/features/app-interfaces/mappers'
 import { getTemplateParamDefinition } from '../../utils/get-template-param-field-definition'
-import { ABITypeTemplateParam, TemplateParamType, UnknownTypeTemplateParam } from '../../data/types'
-import { AbiFormItemValue, AvmValue } from '@/features/abi-methods/models'
+import { ABITypeTemplateParam, AVMTypeTemplateParam, TemplateParamType, UnknownTypeTemplateParam } from '../../data/types'
+import { AbiFormItemValue, AvmFormItemValue } from '@/features/abi-methods/models'
 
 export const UPDATABLE_TEMPLATE_VAR_NAME = 'UPDATABLE'
 export const DELETABLE_TEMPLATE_VAR_NAME = 'DELETABLE'
@@ -61,7 +61,7 @@ function FormInner({
   helper,
 }: FormInnerProps) {
   const formCtx = useFormContext<z.infer<BaseForm>>()
-  const { setValue, trigger } = formCtx
+  const { setValue, setError, clearErrors } = formCtx
   const loadableAppInterfaces = useLoadableAppInterfacesAtom()
   const appInterfaceNameFieldValue = formCtx.watch('name')
   const [appInterfaceName] = useDebounce(appInterfaceNameFieldValue, 500)
@@ -72,9 +72,17 @@ function FormInner({
         (appInterface) => appInterface.name.toLowerCase() === appInterfaceName.toLowerCase()
       )
       setValue('appInterfaceExists', appInterfaceExists)
-      trigger()
+
+      if (appInterfaceExists) {
+        setError('name', {
+          type: 'manual',
+          message: 'App interface with this name already exists',
+        })
+      } else {
+        clearErrors('name')
+      }
     }
-  }, [appInterfaceName, loadableAppInterfaces, setValue, trigger])
+  }, [appInterfaceName, loadableAppInterfaces, setValue, setError, clearErrors])
 
   return (
     <>
@@ -170,7 +178,7 @@ export function DeploymentDetails({ machine }: Props) {
     (values: z.infer<typeof formSchema>) => {
       const templateParamValues = templateParamFields.map((f) => {
         const value = values[f.path as keyof z.infer<typeof formSchema>]
-        return f.toTemplateParam(value as (TealUnknownTypeTemplateParamFieldValue & AvmValue) & AbiFormItemValue)
+        return f.toTemplateParam(value as (TealUnknownTypeTemplateParamFieldValue & AvmFormItemValue) & AbiFormItemValue)
       })
 
       send({
@@ -201,7 +209,9 @@ export function DeploymentDetails({ machine }: Props) {
       return {
         ...acc,
         [field.path]: state.context.templateParams
-          ? field.fromTemplateParam(state.context.templateParams[index] as UnknownTypeTemplateParam & ABITypeTemplateParam)
+          ? field.fromTemplateParam(
+              state.context.templateParams[index] as UnknownTypeTemplateParam & AVMTypeTemplateParam & ABITypeTemplateParam
+            )
           : 'defaultValue' in field
             ? field.defaultValue
             : {
@@ -223,7 +233,7 @@ export function DeploymentDetails({ machine }: Props) {
 
   return (
     <Form
-      className="duration-300 animate-in fade-in-20"
+      className="animate-in fade-in-20 duration-300"
       schema={formSchema}
       onSubmit={next}
       defaultValues={defaultValues}

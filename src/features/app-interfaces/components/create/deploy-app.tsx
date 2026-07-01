@@ -51,7 +51,7 @@ const getTealTemplateParams = (templateParams: ReturnType<typeof useCreateAppInt
         }
       } else if ('abiType' in templateParam) {
         acc[templateParam.name] = templateParam.abiType.encode(templateParam.value)
-      } else {
+      } else if ('avmType' in templateParam) {
         acc[templateParam.name] = templateParam.value
       }
       return acc
@@ -128,7 +128,7 @@ export function DeployApp({ machine }: Props) {
       const deployTransaction = appCallTransactions[appCallTransactions.length - 1]
 
       const appFactory = algorandClient.client.getAppFactory({
-        appSpec: state.context.appSpec as AppSpec, // TODO: PD - convert Arc32AppSpec to AppSpec
+        appSpec: state.context.appSpec as AppSpec,
         defaultSender: activeAddress,
         appName: state.context.name,
         version: state.context.version,
@@ -243,7 +243,7 @@ export function DeployApp({ machine }: Props) {
   }, [methodDefinitions, appSpec, openDialog])
 
   return (
-    <div className="duration-300 animate-in fade-in-20">
+    <div className="animate-in fade-in-20 duration-300">
       {transactions.length === 0 && (
         <div className="mb-4">
           <DescriptionList items={deploymentOptions} dtClassName="self-center" />

@@ -19,7 +19,7 @@ export const deploySmartContract = async (
 ) => {
   const appFactory = algorandClient.client.getAppFactory({
     appSpec,
-    defaultSender: creator.addr,
+    defaultSender: creator.addr.toString(),
   })
 
   // Deploy the app

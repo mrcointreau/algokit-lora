@@ -2,12 +2,12 @@ import { zfd } from 'zod-form-data'
 import { z } from 'zod'
 import { isAddress } from '@/utils/is-address'
 import { bigIntSchema, numberSchema } from '@/features/forms/data/common'
-import algosdk from 'algosdk'
 import { asOnCompleteLabel } from '../mappers/as-description-list-items'
 import { algorandClient } from '@/features/common/data/algo-client'
 import { BuildTransactionResult } from '../models'
-import { asAlgosdkTransactions } from '../mappers'
+import { asAlgokitTransactions } from '../mappers'
 import { isNfd } from '@/features/nfd/data'
+import algosdk, { Transaction } from 'algosdk'
 
 export const requiredMessage = 'Required'
 
@@ -36,6 +36,7 @@ export const optionalAddressFieldSchema = z
       message: invalidAddressOrNfdMessage,
     }),
     resolvedAddress: z.string().optional(),
+    autoPopulated: z.boolean().optional(),
   })
   .superRefine((field, ctx) => {
     if (field.value && (!field.resolvedAddress || !isAddress(field.resolvedAddress))) {
@@ -156,21 +157,29 @@ export const commonSchema = {
 export const commonFormData = zfd.formData(commonSchema)
 
 export const buildComposer = async (transactions: BuildTransactionResult[]) => {
-  const composer = algorandClient.newGroup()
+  const algokitTxns: Transaction[] = []
+
   for (const transaction of transactions) {
-    const txns = await asAlgosdkTransactions(transaction)
-    txns.forEach((txn) => composer.addTransaction(txn))
+    const txns = await asAlgokitTransactions(transaction)
+    algokitTxns.push(...txns)
   }
+
+  const composer = algorandClient.newGroup()
+  algokitTxns.forEach((txn) => composer.addTransaction(txn))
   return composer
 }
 
 const nullSigner = algosdk.makeEmptyTransactionSigner()
 
 export const buildComposerWithEmptySignatures = async (transactions: BuildTransactionResult[]) => {
-  const composer = algorandClient.newGroup()
+  const algokitTxns: Transaction[] = []
+
   for (const transaction of transactions) {
-    const txns = await asAlgosdkTransactions(transaction)
-    txns.forEach((txn) => composer.addTransaction(txn, nullSigner))
+    const txns = await asAlgokitTransactions(transaction)
+    algokitTxns.push(...txns)
   }
+
+  const composer = algorandClient.newGroup()
+  algokitTxns.forEach((txn) => composer.addTransaction(txn, nullSigner))
   return composer
 }

@@ -15,13 +15,19 @@ import { useSearch } from '../data'
 import { Loader2 as Loader } from 'lucide-react'
 import { useLocationChange } from '@/features/common/hooks/use-location-change'
 import { isMacOs } from '@/utils/is-mac-platform'
+import { useLayout } from '@/features/settings/data'
 
 export const searchPlaceholderLabel = `Search by ID or Address ${isMacOs ? '(⌘K)' : '(Ctrl+K)'}`
 export const noSearchResultsMessage = 'No results.'
 
-export function Search() {
+type Props = {
+  className?: string
+}
+
+export function Search({ className }: Props) {
   const navigate = useNavigate()
   const [term, setTerm, loadableResults] = useSearch()
+  const [__, setLayout] = useLayout()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const handleInput = useCallback(
@@ -33,9 +39,10 @@ export function Search() {
 
   const handleSelection = useCallback(
     (url: string) => {
+      setLayout((prev) => ({ ...prev, isDrawerMenuExpanded: false }))
       navigate(url)
     },
-    [navigate]
+    [navigate, setLayout]
   )
 
   const clearTerm = useCallback(() => term && setTerm(''), [setTerm, term])
@@ -59,10 +66,7 @@ export function Search() {
 
   return (
     <Command
-      className={cn(
-        'hidden md:flex bg-popover text-popover-foreground w-[22rem] h-auto z-20 border border-input mt-[1.2rem]',
-        term && 'shadow-md'
-      )}
+      className={cn('bg-popover text-popover-foreground w-88 h-auto z-20 border border-input mt-[1.2rem]', term && 'shadow-md', className)}
       label="Search by ID or Address"
       shouldFilter={false}
       loop
@@ -93,7 +97,7 @@ export function Search() {
                   {results.map((result) => {
                     return (
                       <CommandItem key={`${result.type}-${result.id}`} value={result.url} onSelect={handleSelection}>
-                        <NavLink className="truncate text-primary underline" to={result.url}>
+                        <NavLink className="text-primary truncate underline" to={result.url}>
                           {result.label}
                         </NavLink>
                         <span className={cn('ml-auto text-xs')}>{result.type}</span>

@@ -38,17 +38,18 @@ import {
   asPaymentTransactionParams,
   asApplicationCreateTransactionParams,
   asApplicationUpdateTransactionParams,
-} from './as-algosdk-transactions'
+} from './as-algokit-transactions'
 import { AlgoAmount } from '@algorandfoundation/algokit-utils/types/amount'
 import { CommonAppCallParams } from '@algorandfoundation/algokit-utils/types/composer'
 import { Button } from '@/features/common/components/button'
 import { invariant } from '@/utils/invariant'
 import { Edit, PlusCircle } from 'lucide-react'
-import { isBuildTransactionResult, isPlaceholderTransaction } from '../utils/transaction-result-narrowing'
+import { isBuildTransactionResult, isPlaceholderTransaction, isTransactionArg } from '../utils/transaction-result-narrowing'
 import { asAssetDisplayAmount } from '@/features/common/components/display-asset-amount'
 import { AddressOrNfdLink } from '@/features/accounts/components/address-or-nfd-link'
 import { DecodedAbiStruct } from '@/features/abi-methods/components/decoded-abi-struct'
 import { ArgumentDefinition } from '@/features/applications/models'
+import TransactionSenderLink from '@/features/accounts/components/transaction-sender-link'
 
 export const asDescriptionListItems = (
   transaction: BuildTransactionResult,
@@ -101,7 +102,7 @@ const asPaymentTransaction = (txn: BuildPaymentTransactionResult | BuildAccountC
   return [
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={txn.sender.autoPopulated} address={params.sender} />,
     },
     ...('closeRemainderTo' in params && params.closeRemainderTo
       ? [
@@ -141,7 +142,7 @@ const asAssetTransferTransaction = (
     },
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     {
       dt: 'Receiver',
@@ -193,7 +194,7 @@ const asAssetConfigTransaction = (
     ...('decimals' in params && params.decimals !== undefined ? [{ dt: 'Decimals', dd: params.decimals }] : []),
     {
       dt: transaction.type === BuildableTransactionType.AssetCreate ? 'Creator' : 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     ...('manager' in params && params.manager
       ? [
@@ -248,9 +249,9 @@ const asAssetFreezeTransaction = (transaction: BuildAssetFreezeTransactionResult
     },
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
-    ...('account' in params && params.account
+    ...(params.account
       ? [
           {
             dt: 'Freeze target',
@@ -274,7 +275,7 @@ const asKeyRegistrationTransaction = (transaction: BuildKeyRegistrationTransacti
   return [
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     {
       dt: 'Registration',
@@ -298,7 +299,7 @@ const asKeyRegistrationTransaction = (transaction: BuildKeyRegistrationTransacti
 
 const flatten = (args: MethodCallArg[]): MethodCallArg[] => {
   return args.reduce((acc, arg) => {
-    if (typeof arg === 'object' && 'type' in arg && arg.type === BuildableTransactionType.MethodCall) {
+    if (isBuildTransactionResult(arg) && arg.type === BuildableTransactionType.MethodCall) {
       return [...acc, ...flatten(arg.methodArgs), arg]
     }
     return [...acc, arg]
@@ -314,7 +315,7 @@ const asMethodArg = (
 ) => {
   const arg = args[argIndex]
   if (algosdk.abiTypeIsTransaction(argumentDefinition.type)) {
-    invariant(typeof arg === 'object' && 'type' in arg, 'Transaction type args must be a transaction')
+    invariant(isTransactionArg(arg), 'Transaction type args must be a transaction')
 
     const argId = arg.type === BuildableTransactionType.Fulfilled ? arg.fulfilledById : arg.id
     const resolvedArg =
@@ -331,7 +332,7 @@ const asMethodArg = (
         <span className="truncate">Transaction {argPosition ?? ''} in the group</span>
         {resolvedArg && resolvedArg.type !== BuildableTransactionType.Fulfilled && (
           <Button
-            className="size-4 p-0 text-primary"
+            className="text-primary size-4 p-0"
             variant="no-style"
             onClick={() => onEditTransaction(resolvedArg)}
             {...(resolvedArg.type === BuildableTransactionType.Placeholder
@@ -386,7 +387,7 @@ const asAppCallTransaction = (transaction: BuildAppCallTransactionResult): Descr
     },
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     ...(transaction.extraProgramPages !== undefined
       ? [
@@ -439,7 +440,7 @@ const asMethodCallTransaction = (
     },
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     ...(transaction.extraProgramPages !== undefined
       ? [
@@ -514,7 +515,7 @@ const asResourcesItem = (
                 <ol className="pl-4">
                   {accounts?.map((address, index, array) => (
                     <li key={index} className="truncate">
-                      <AddressOrNfdLink address={address} className="inline text-primary underline">
+                      <AddressOrNfdLink address={address} className="text-primary inline underline">
                         {typeof address === 'string' ? address : address.toString()}
                       </AddressOrNfdLink>
                       {index < array.length - 1 ? <span>{', '}</span> : null}
@@ -533,7 +534,7 @@ const asResourcesItem = (
                 <ol className="pl-4">
                   {assets.map((assetId, index, array) => (
                     <li key={index} className="truncate">
-                      <AssetIdLink assetId={assetId} className="inline text-primary underline">
+                      <AssetIdLink assetId={assetId} className="text-primary inline underline">
                         {assetId.toString()}
                       </AssetIdLink>
                       {index < array.length - 1 ? <span>{', '}</span> : null}
@@ -552,7 +553,7 @@ const asResourcesItem = (
                 <ol className="pl-4">
                   {apps?.map((appId, index, array) => (
                     <li key={index} className="truncate">
-                      <ApplicationLink applicationId={appId} className="inline text-primary underline">
+                      <ApplicationLink applicationId={appId} className="text-primary inline underline">
                         {appId.toString()}
                       </ApplicationLink>
                       {index < array.length - 1 ? <span>{', '}</span> : null}
@@ -576,7 +577,7 @@ const asResourcesItem = (
                         <li key={index} className="truncate">
                           <span>[</span>
                           {box.appId > 0 ? (
-                            <ApplicationLink applicationId={box.appId} className="inline text-primary underline">
+                            <ApplicationLink applicationId={box.appId} className="text-primary inline underline">
                               {box.appId.toString()}
                             </ApplicationLink>
                           ) : (
@@ -699,7 +700,7 @@ const asApplicationCreateTransaction = (transaction: BuildApplicationCreateTrans
     },
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     {
       dt: 'Approval program',
@@ -762,7 +763,7 @@ const asApplicationUpdateTransaction = (transaction: BuildApplicationUpdateTrans
     },
     {
       dt: 'Sender',
-      dd: <AddressOrNfdLink address={params.sender} />,
+      dd: <TransactionSenderLink autoPopulated={transaction.sender.autoPopulated} address={params.sender} />,
     },
     {
       dt: 'Approval program',

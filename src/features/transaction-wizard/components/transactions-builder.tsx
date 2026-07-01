@@ -1,10 +1,8 @@
-/* eslint-disable tailwindcss/no-custom-classname */
 import algosdk from 'algosdk'
 import { useCallback, useMemo, useState } from 'react'
 import { DialogBodyProps, useDialogForm } from '@/features/common/hooks/use-dialog-form'
 import { AsyncActionButton, Button } from '@/features/common/components/button'
 import { TransactionBuilder } from './transaction-builder'
-import { algod } from '@/features/common/data/algo-client'
 import { useWallet } from '@txnlab/use-wallet-react'
 import { invariant } from '@/utils/invariant'
 import {
@@ -17,29 +15,33 @@ import {
 } from '../models'
 import { TransactionBuilderMode } from '../data'
 import { TransactionsTable } from './transactions-table'
-import { populateAppCallResources } from '@algorandfoundation/algokit-utils'
 import { uint8ArrayToBase64 } from '@/utils/uint8-array-to-base64'
 import {
   ConfirmTransactionsResourcesForm,
   TransactionResources,
 } from '@/features/applications/components/confirm-transactions-resources-form'
-import { isBuildTransactionResult, isPlaceholderTransaction } from '../utils/transaction-result-narrowing'
+import {
+  isBuildTransactionResult,
+  isPlaceholderTransaction,
+  isFulfilledByTransaction,
+  isTransactionArg,
+} from '../utils/transaction-result-narrowing'
 import { HintText } from '@/features/forms/components/hint-text'
 import { asError } from '@/utils/error'
 import { Eraser, HardDriveDownload, Plus, Send, SquarePlay } from 'lucide-react'
 import { transactionGroupTableLabel } from './labels'
 import React from 'react'
-import { asAlgosdkTransactionType } from '../mappers/as-algosdk-transaction-type'
+import { asAlgokitTransactionType } from '../mappers/as-algokit-transaction-type'
 import { buildComposer, buildComposerWithEmptySignatures } from '../data/common'
 import { asAbiTransactionType } from '../mappers'
 import { SimulateOptions, TransactionComposer } from '@algorandfoundation/algokit-utils/types/composer'
 import { Label } from '@/features/common/components/label'
 import { Checkbox } from '@/features/common/components/checkbox'
-import { parseCallAbiMethodError, parseSimulateAbiMethodError } from '@/features/abi-methods/utils/parse-errors'
 
 export const transactionTypeLabel = 'Transaction type'
 export const sendButtonLabel = 'Send'
 const connectWalletMessage = 'Please connect a wallet'
+const onlySimulateOptionalSenderMessage = 'Auto populated the sender - only simulate is enabled'
 export const addTransactionLabel = 'Add Transaction'
 export const transactionGroupLabel = 'Transaction Group'
 
@@ -60,7 +62,7 @@ type Props = {
   }
 }
 
-const defaultTitle = <h4 className="pb-0 text-primary">{transactionGroupLabel}</h4>
+const defaultTitle = <h4 className="text-primary pb-0">{transactionGroupLabel}</h4>
 const defaultSendButtonConfig = {
   label: sendButtonLabel,
   icon: <Send size={16} />,
@@ -150,7 +152,7 @@ export function TransactionsBuilder({
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err)
-      const error = await parseCallAbiMethodError(err, transactions)
+      const error = asError(err)
       setErrorMessage(error.message)
     } finally {
       setIsBusy(false)
@@ -171,6 +173,7 @@ export function TransactionsBuilder({
           stateChange: true,
         }),
       } satisfies SimulateOptions
+
       const result = await (requireSignaturesOnSimulate
         ? (await buildComposer(transactions)).simulate(simulateConfig)
         : (await buildComposerWithEmptySignatures(transactions)).simulate({
@@ -183,7 +186,7 @@ export function TransactionsBuilder({
     } catch (err) {
       // eslint-disable-next-line no-console
       console.error(err)
-      const error = await parseSimulateAbiMethodError(err, transactions)
+      const error = asError(err)
       setErrorMessage(error.message)
     } finally {
       setIsBusy(false)
@@ -197,9 +200,7 @@ export function TransactionsBuilder({
       ensureThereIsNoPlaceholderTransaction(transactions)
 
       const composer = await buildComposer(transactions)
-      const { atc } = await composer.build()
-      const populatedAtc = await populateAppCallResources(atc, algod)
-      const transactionsWithResources = populatedAtc.buildGroup()
+      const { transactions: transactionsWithResources } = await composer.build()
 
       setTransactions((prev) => {
         let newTransactions = [...prev]
@@ -240,7 +241,7 @@ export function TransactionsBuilder({
         transaction.type === BuildableTransactionType.Fulfilled
           ? openTransactionBuilderDialog({
               mode: TransactionBuilderMode.Create,
-              type: asAlgosdkTransactionType(transaction.targetType),
+              type: asAlgokitTransactionType(transaction.targetType),
             })
           : openTransactionBuilderDialog({
               mode: TransactionBuilderMode.Edit,
@@ -328,6 +329,15 @@ export function TransactionsBuilder({
   }, [activeAddress, commonButtonDisableProps, requireSignaturesOnSimulate])
 
   const sendButtonDisabledProps = useMemo(() => {
+    const hasAutoPopulatedSender = transactions.some((t) => t.sender?.autoPopulated === true)
+
+    if (hasAutoPopulatedSender) {
+      return {
+        disabled: true,
+        disabledReason: onlySimulateOptionalSenderMessage,
+      }
+    }
+
     if (!activeAddress) {
       return {
         disabled: true,
@@ -336,18 +346,18 @@ export function TransactionsBuilder({
     }
 
     return commonButtonDisableProps
-  }, [activeAddress, commonButtonDisableProps])
+  }, [transactions, activeAddress, commonButtonDisableProps])
 
   return (
     <div>
       <div className="space-y-4">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-col justify-between gap-2 md:flex-row md:items-center">
           {title}
           {!disableAddTransaction && (
             <Button
               variant="outline-secondary"
               onClick={createTransaction}
-              className="plausible-event-name=txn-wizard-add-txn ml-auto"
+              className="plausible-event-name=txn-wizard-add-txn w-44"
               icon={<Plus size={16} />}
             >
               {addTransactionLabel}
@@ -382,7 +392,7 @@ export function TransactionsBuilder({
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2">
             {additionalActions}
             {!disablePopulate && (
@@ -396,7 +406,7 @@ export function TransactionsBuilder({
               </AsyncActionButton>
             )}
           </div>
-          <div className="left-auto flex gap-2">
+          <div className="left-auto flex flex-wrap gap-2">
             <Button onClick={reset} variant="outline" icon={<Eraser size={16} />}>
               Clear
             </Button>
@@ -462,12 +472,7 @@ const buildRelatedTransactionsGroup = (transaction: BuildTransactionResult) => {
       (acc, arg) => {
         if (isBuildTransactionResult(arg)) {
           acc.push(...buildRelatedTransactionsGroup(arg).concat(arg))
-        }
-        if (
-          typeof arg === 'object' &&
-          'type' in arg &&
-          [BuildableTransactionType.Placeholder, BuildableTransactionType.Fulfilled].includes(arg.type)
-        ) {
+        } else if (isPlaceholderTransaction(arg) || isFulfilledByTransaction(arg)) {
           acc.push(arg)
         }
         return acc
@@ -604,7 +609,7 @@ const setTransaction = (
     }
 
     transaction.methodArgs = transaction.methodArgs.map((arg) => {
-      if (typeof arg === 'object' && 'type' in arg) {
+      if (isTransactionArg(arg)) {
         return trySet(arg)
       }
       return arg

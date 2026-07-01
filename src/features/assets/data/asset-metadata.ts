@@ -5,17 +5,17 @@ import { getArc19Url, isArc19Url } from '../utils/arc19'
 import { getArc3Url, isArc3Url } from '../utils/arc3'
 import { base64ToUtf8 } from '@/utils/base64-to-utf8'
 import { ZERO_ADDRESS } from '@/features/common/constants'
-import { executePaginatedRequest } from '@algorandfoundation/algokit-utils'
 import { readOnlyAtomCache } from '@/features/common/data'
 import { indexer } from '@/features/common/data/algo-client'
 import { replaceIpfsWithGatewayIfNeeded } from '../utils/replace-ipfs-with-gateway-if-needed'
 import { Getter, Setter } from 'jotai/index'
 import { TransactionResult } from '@/features/transactions/data/types'
-import algosdk from 'algosdk'
 import { uint8ArrayToBase64 } from '@/utils/uint8-array-to-base64'
 import { indexerTransactionToTransactionResult } from '@/features/transactions/mappers/indexer-transaction-mappers'
 import { getArc62AppId } from '../utils/arc62'
 import { createAssetCirculatingSupplyAtom } from './circulating-supply'
+import { executePaginatedRequest } from '@algorandfoundation/algokit-utils'
+import algosdk from 'algosdk'
 
 // Currently, we support ARC-3, 19 and 69. Their specs can be found here https://github.com/algorandfoundation/ARCs/tree/main/ARCs
 // ARCs are community standard, therefore, there are edge cases
@@ -45,7 +45,7 @@ const createAssetMetadataResult = async (
 
   // Get ARC-3 or ARC-19 metadata if applicable
   const [isArc3, isArc19] = assetResult.params.url
-    ? ([isArc3Url(assetResult.params.url), isArc19Url(assetResult.params.url)] as const)
+    ? ([isArc3Url(assetResult.params.url, assetResult.params.name), isArc19Url(assetResult.params.url)] as const)
     : [false, false]
 
   if (assetResult.params.url && (isArc3 || isArc19)) {
@@ -131,7 +131,7 @@ const getAssetMetadataResult = async (get: Getter, __: Setter, assetResult: Asse
     return null
   }
 
-  let results =
+  let results: TransactionResult[] =
     assetResult.params.manager && assetResult.params.manager !== ZERO_ADDRESS
       ? await indexer
           .searchForTransactions()

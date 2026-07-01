@@ -1,6 +1,6 @@
 import { ApplicationResult } from '@/features/applications/data/types'
 import { randomBigInt } from '@/tests/utils/random-bigint'
-import { DataBuilder, dossierProxy, randomString } from '@makerx/ts-dossier'
+import { DataBuilder, dossierProxy, randomString } from '@/tests/utils/dossier'
 import algosdk, { base64ToBytes } from 'algosdk'
 
 export class ApplicationResultBuilder extends DataBuilder<ApplicationResult> {

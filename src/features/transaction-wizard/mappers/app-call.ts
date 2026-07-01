@@ -67,7 +67,8 @@ const asField = (arg: ArgumentDefinition, argIndex: number): ArgumentField | Tra
           }
         ),
       fieldSchema: getFieldSchema(arg.type, isArgOptional),
-      getAppCallArg: (value) => (value !== undefined ? abiFormItemValueToABIValue(arg.type, value) : undefined),
+      getAppCallArg: (value) =>
+        value !== undefined ? abiFormItemValueToABIValue(arg.type as algosdk.ABIType | algosdk.ABIReferenceType, value) : undefined,
     }
   } else {
     return {

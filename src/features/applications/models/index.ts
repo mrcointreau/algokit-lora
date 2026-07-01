@@ -1,6 +1,6 @@
 import { ApplicationId } from '../data/types'
 import algosdk from 'algosdk'
-import { Arc56Contract, Method } from '@algorandfoundation/algokit-utils/types/app-arc56'
+import { Arc56Contract, Arc56Method } from '@algorandfoundation/algokit-utils/types/app-arc56'
 import { DecodedAbiStorageKey, DecodedAbiStorageKeyType, DecodedAbiStorageValue } from '@/features/abi-methods/models'
 
 export type ApplicationSummary = {
@@ -83,7 +83,7 @@ export type StructDefinition = {
   fields: StructFieldDefinition[]
 }
 
-export type DefaultArgument = NonNullable<Method['args'][number]['defaultValue']>
+export type DefaultArgument = NonNullable<Arc56Method['args'][number]['defaultValue']>
 
 export type ArgumentDefinition = {
   name?: string

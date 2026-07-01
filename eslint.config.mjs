@@ -3,14 +3,13 @@ import tseslint from 'typescript-eslint'
 import react from 'eslint-plugin-react'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import reactHooks from 'eslint-plugin-react-hooks'
-import tailwindcss from 'eslint-plugin-tailwindcss'
 import prettier from 'eslint-config-prettier'
 
 export default tseslint.config(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
-    ignores: ['dist/**', 'src-tauri/target/**'],
+    ignores: ['dist/**'],
   },
   {
     files: ['**/*.cjs'],
@@ -34,13 +33,12 @@ export default tseslint.config(
       react,
       'react-refresh': reactRefresh,
       'react-hooks': reactHooks,
-      tailwindcss,
     },
+
     rules: {
       //   ...react.configs.recommended.rules,
       //   ...react.configs['jsx-runtime'].rules,
       ...reactHooks.configs.recommended.rules,
-      ...tailwindcss.configs.recommended.rules,
       'no-console': 'warn',
       'react-refresh/only-export-components': 'off',
       '@typescript-eslint/no-unused-vars': [

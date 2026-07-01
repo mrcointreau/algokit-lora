@@ -59,8 +59,8 @@ export const asApplication = (
           numUint: application.params.localStateSchema.numUint,
         }
       : undefined,
-    approvalProgram: uint8ArrayToBase64(application.params.approvalProgram),
-    clearStateProgram: uint8ArrayToBase64(application.params.clearStateProgram),
+    approvalProgram: application.params.approvalProgram ? uint8ArrayToBase64(application.params.approvalProgram) : '',
+    clearStateProgram: application.params.clearStateProgram ? uint8ArrayToBase64(application.params.clearStateProgram) : '',
     globalState: asGlobalStateValues(application.params.globalState, appSpec),
     isDeleted: application.deleted ?? false,
     json: asJson(normaliseAlgoSdkData(application)),
@@ -128,63 +128,68 @@ const asApplicationState = (state: modelsv2.TealKeyValue, type: 'local' | 'globa
     return getRawApplicationState(state)
   }
 
-  // Check for local/global keys first
-  for (const [keyName, storageKey] of Object.entries(appSpec.state.keys[type])) {
-    if (storageKey.key === key) {
-      return {
-        key: {
-          name: keyName,
-          type: DecodedAbiStorageKeyType.Key,
-          ...asDecodedAbiStorageValue(appSpec, storageKey.keyType, base64ToBytes(key)),
-        },
-        value: tealValueToAbiStorageValue(appSpec, storageKey.valueType, value),
-      } satisfies DecodedApplicationState
-    }
-  }
-
-  // Check for local/global maps with prefix
-  for (const [keyName, storageMap] of Object.entries(appSpec.state.maps[type])) {
-    if (!storageMap.prefix) {
-      continue
-    }
-    const keyBytes = base64ToBytes(key)
-
-    const prefixBytes = base64ToBytes(storageMap.prefix)
-    if (uint8ArrayStartsWith(keyBytes, prefixBytes)) {
-      const keyValueBytes = keyBytes.subarray(prefixBytes.length)
-
-      return {
-        key: {
-          name: keyName,
-          type: DecodedAbiStorageKeyType.MapKey,
-          prefix: base64ToUtf8(storageMap.prefix),
-          ...asDecodedAbiStorageValue(appSpec, storageMap.keyType, keyValueBytes),
-        },
-        value: tealValueToAbiStorageValue(appSpec, storageMap.valueType, value),
-      } satisfies DecodedApplicationState
-    }
-  }
-
-  // Check for local/global maps without prefix
-  for (const [keyName, storageMap] of Object.entries(appSpec.state.maps[type])) {
-    if (storageMap.prefix) {
-      continue
+  try {
+    // Check for local/global keys first
+    for (const [keyName, storageKey] of Object.entries(appSpec.state.keys[type])) {
+      if (storageKey.key === key) {
+        return {
+          key: {
+            name: keyName,
+            type: DecodedAbiStorageKeyType.Key,
+            ...asDecodedAbiStorageValue(appSpec, storageKey.keyType, base64ToBytes(key)),
+          },
+          value: tealValueToAbiStorageValue(appSpec, storageKey.valueType, value),
+        } satisfies DecodedApplicationState
+      }
     }
 
-    try {
-      const keyValueBytes = base64ToBytes(key)
+    // Check for local/global maps with prefix
+    for (const [keyName, storageMap] of Object.entries(appSpec.state.maps[type])) {
+      if (!storageMap.prefix) {
+        continue
+      }
+      const keyBytes = base64ToBytes(key)
 
-      return {
-        key: {
-          name: keyName,
-          type: DecodedAbiStorageKeyType.MapKey,
-          ...asDecodedAbiStorageValue(appSpec, storageMap.keyType, keyValueBytes),
-        },
-        value: tealValueToAbiStorageValue(appSpec, storageMap.valueType, value),
-      } satisfies DecodedApplicationState
-    } catch {
-      // Do nothing
+      const prefixBytes = base64ToBytes(storageMap.prefix)
+      if (uint8ArrayStartsWith(keyBytes, prefixBytes)) {
+        const keyValueBytes = keyBytes.subarray(prefixBytes.length)
+
+        return {
+          key: {
+            name: keyName,
+            type: DecodedAbiStorageKeyType.MapKey,
+            prefix: base64ToUtf8(storageMap.prefix),
+            ...asDecodedAbiStorageValue(appSpec, storageMap.keyType, keyValueBytes),
+          },
+          value: tealValueToAbiStorageValue(appSpec, storageMap.valueType, value),
+        } satisfies DecodedApplicationState
+      }
     }
+
+    // Check for local/global maps without prefix
+    for (const [keyName, storageMap] of Object.entries(appSpec.state.maps[type])) {
+      if (storageMap.prefix) {
+        continue
+      }
+
+      try {
+        const keyValueBytes = base64ToBytes(key)
+
+        return {
+          key: {
+            name: keyName,
+            type: DecodedAbiStorageKeyType.MapKey,
+            ...asDecodedAbiStorageValue(appSpec, storageMap.keyType, keyValueBytes),
+          },
+          value: tealValueToAbiStorageValue(appSpec, storageMap.valueType, value),
+        } satisfies DecodedApplicationState
+      } catch {
+        // Do nothing
+      }
+    }
+  } catch (e: unknown) {
+    // eslint-disable-next-line no-console
+    console.warn('Failed to decode application state', e)
   }
 
   // The default case
@@ -210,7 +215,7 @@ const tealValueToAbiStorageValue = (appSpec: Arc56Contract, type: string, value:
     // When the teal value is uint, display it as uint64
     const b = BigInt(value.uint)
     return {
-      abiType: algosdk.ABIUintType.from('uint64'),
+      abiType: algosdk.ABIType.from('uint64'),
       value: {
         type: DecodedAbiType.Uint,
         value: b,

@@ -28,7 +28,7 @@ import {
 import { DescriptionList } from '@/features/common/components/description-list'
 import { asDescriptionListItems, asTransactionLabelFromBuildableTransactionType, asTransactionLabelFromTransactionType } from '../mappers'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/features/common/components/dropdown-menu'
-import { isBuildTransactionResult } from '../utils/transaction-result-narrowing'
+import { isBuildTransactionResult, isPlaceholderTransaction } from '../utils/transaction-result-narrowing'
 import { transactionActionsLabel } from './labels'
 import { Button } from '@/features/common/components/button'
 
@@ -135,11 +135,11 @@ export function TransactionsTable({
 
   return (
     <DndContext collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis]} onDragEnd={handleDragEnd} sensors={sensors}>
-      <div className="grid">
-        <Table aria-label={ariaLabel} className="border-separate border-spacing-0 overflow-hidden">
+      <div className="grid w-full">
+        <Table aria-label={ariaLabel} className="border-separate border-spacing-0">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="relative z-10 bg-muted hover:bg-muted">
+              <TableRow key={headerGroup.id} className="bg-muted hover:bg-muted relative z-10">
                 <TableHead className="w-10 border-y"></TableHead>
                 {headerGroup.headers.map((header) => {
                   return (
@@ -225,12 +225,7 @@ const getTableColumns = ({
     header: 'Description',
     cell: (c) => {
       const transaction = c.row.original
-      return (
-        <DescriptionList
-          items={asDescriptionListItems(transaction, transactionPositions, onEditTransaction)}
-          dtClassName="w-[10rem] truncate"
-        />
-      )
+      return <DescriptionList items={asDescriptionListItems(transaction, transactionPositions, onEditTransaction)} dtClassName="truncate" />
     },
   },
   {
@@ -239,7 +234,13 @@ const getTableColumns = ({
     cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger aria-label={transactionActionsLabel} asChild>
-          <Button variant="outline" size="sm" className="px-2.5" icon={<EllipsisVertical size={16} />} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="px-2.5
+          "
+            icon={<EllipsisVertical size={16} />}
+          />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" side="right">
           <DropdownMenuItem onClick={() => onEditTransaction(row.original)}>Edit</DropdownMenuItem>
@@ -270,8 +271,7 @@ const getSubTransactions = (transaction: BuildTransactionResult): (BuildTransact
     (acc, arg) => {
       if (isBuildTransactionResult(arg)) {
         acc.push(...[...getSubTransactions(arg), arg])
-      }
-      if (typeof arg === 'object' && 'type' in arg && arg.type === BuildableTransactionType.Placeholder) {
+      } else if (isPlaceholderTransaction(arg)) {
         acc.push(arg)
       }
       return acc
@@ -322,10 +322,10 @@ const getSubTransactionsTableColumns = ({
           ) : (
             <DescriptionList
               items={asDescriptionListItems(transaction, transactionPositions, onEditTransaction)}
-              dtClassName="w-[10rem] truncate"
+              dtClassName="w-40 truncate"
             />
           )}
-          <div className="absolute -bottom-2 right-1/2 z-10">
+          <div className="absolute right-1/2 -bottom-2 z-10">
             <Link2Icon size={16} className="text-muted-foreground/70" />
           </div>
         </div>
